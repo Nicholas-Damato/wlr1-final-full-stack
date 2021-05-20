@@ -14,31 +14,39 @@ module.exports = {
         const [cart] = await db.cart.create_cart(user.user_id)
         delete user.password
         req.session.user = user
-        req.session.user.card_id = cart.card_id
+        req.session.user.cart_id = cart.cart_id
         return res.status(200).send(req.session.user)
     },
     login: async (req, res) => {
-        const db = req.app.get('db')
-        const { email, password } = req.body
-        const [user] = await db.auth.check_email(email)
-        if (!user) {
-            return res.status(401).send('User is not registered')
-        }
-        const isAuthenticated = bcrypt.compareSync(password, user.password)
-        if (!isAuthenticated) {
-            return res.status(401).send('Password is incorrect')
-        }
-        const [cart] = await db.cart.get_cart(user.user_id)
-        delete user.password
-        req.session.user = user
-        req.session.user.cart_id = cart.card_id
-        return res.status(200).send(req.session.user)
+    const db = req.app.get('db')
+    const {email, password} = req.body
+    const [user] = await db.auth.check_email(email)
+    if (!user) {
+        return res.status(401).send('User is not registered')
+    }
+    const isAuthenticated = bcrypt.compareSync(password, user.password)
+    if (!isAuthenticated) {
+        return res.status(401).send('Password is incorrect')
+    }
+    const [cart] = await db.cart.get_cart(user.user_id)
+    delete user.password
+    req.session.user = user
+    req.session.user.cart_id = cart.cart_id
+    return res.status(200).send(req.session.user)
     },
     logout: (req, res) => {
         req.session.destroy()
         res.sendStatus(200)
     },
     getUser: (req, res) => {
-
+        const db = req.app.get('db')
+        const { user } = req.session
+        if(!user){
+            return res.status(511).send('User not logged in')
+        }
+        db.cart.get_cart_items(user.cart_id)
+        .then((cartProducts) => {
+            res.status(200).send({user, cartProducts})
+        })
     }
 }
